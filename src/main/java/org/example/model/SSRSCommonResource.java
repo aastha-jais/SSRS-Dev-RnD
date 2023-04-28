@@ -8,7 +8,7 @@ import java.util.List;
 
 @Data
 @JsonPropertyOrder
-public class SSRSCommonResource extends Report {
+public class SSRSCommonResource {
 
     @JsonProperty("Id")
     private String id;
@@ -45,72 +45,5 @@ public class SSRSCommonResource extends Report {
 
     @JsonProperty("ParentFolderId")
     private String parentFolderId;
-
-    @JsonProperty("IsFavorite")
-    private Boolean isFavorite;
-
-    @JsonProperty("ContentType")
-    private String contentType;
-
-    @JsonProperty("Content")
-    private String content;
-
-    @JsonProperty("Roles")
-    private List<String> roles;
-
-    //-------------------------DataSet Properties----------------------//
-    @JsonProperty("HasParameters")
-    private Boolean hasParameters;
-
-    @JsonProperty("QueryExecutionTimeOut")
-    private int queryExecutionTimeOut;
-
-    //------------------------DataSource Properties---------------------//
-    @JsonProperty("IsEnabled")
-    private boolean isEnabled;
-
-    @JsonProperty("ConnectionString")
-    private String connectionString;
-
-    @JsonProperty("DataSourceTypeString")
-    private String dataSourceTypeString;
-
-    @JsonProperty("IsOriginalConnectionStringExpressionBased")
-    private boolean isOriginalConnectionStringExpressionBased;
-
-    @JsonProperty("IsConnectionStringOverridden")
-    private boolean isConnectionStringOverridden;
-
-    @JsonProperty("DataSourceType")
-    private String dataSourceType;
-
-    @JsonProperty("CredentialRetrieval")
-    private String credentialRetrieval;
-
-    @JsonProperty("IsReference")
-    private String isReference;
-
-    @JsonProperty("DataSourceSubType")
-    private String dataSourceSubType;
-
-    @JsonProperty("DataModelDataSource")
-    private String dataModelDataSource;
-
-    @JsonProperty("CredentialsByUser")
-    private String credentialsByUser;
-
-    @JsonProperty("CredentialInServer")
-    private String credentialInServer;
-
-    //------------------------Report Properties---------------------//
-    @JsonProperty("HasDataSource")
-    private Boolean hasDataSource;
-
-    @JsonProperty("HasSharedDataSets")
-    private Boolean hasSharedDataSets;
-
-    //------------------------Link Report Properties---------------------//
-    @JsonProperty("Link")
-    private String link;
 
 }

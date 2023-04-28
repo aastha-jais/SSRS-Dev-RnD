@@ -173,17 +173,27 @@ public class SSRSTest {
                     catalogDataSetsMetadata(dataSets);
                 }
                 else if(source.equals("CatalogItems")){
-                    Report report = objectMapper.readValue(jsonArray.get(i).toString(), Report.class);
-                    catalogReportMetadata(report);
-                    if(report.getHasDataSources()==true) {
-                        String connectedResourceResponse=getConnectedResource("Reports","DataSources",report.getId());
-                        ResponseForConnectedSources (connectedResourceResponse, "DataSources");
+                    SSRSCommonResource ssrsCommonResource = objectMapper.readValue(jsonArray.get(i).toString(), SSRSCommonResource.class);
+                    if(ssrsCommonResource.getType().equals(("Report"))) {
+                        Report report = objectMapper.readValue(jsonArray.get(i).toString(), Report.class);
+                        catalogReportMetadata(report);
+                        if (report.getHasDataSources() == true) {
+                            String connectedResourceResponse = getConnectedResource("Reports", "DataSources", report.getId());
+                            ResponseForConnectedSources(connectedResourceResponse, "DataSources");
+                        }
+                        if (report.getHasSharedDataSets() == true) {
+                            String connectedResourceResponse = getConnectedResource("Reports", "SharedDataSets", report.getId());
+                            ResponseForConnectedSources(connectedResourceResponse, "SharedDataSets");
+                        }
                     }
-                    if(report.getHasSharedDataSets()==true) {
-                        String connectedResourceResponse=getConnectedResource("Reports","SharedDataSets",report.getId());
-                        ResponseForConnectedSources (connectedResourceResponse, "SharedDataSets");
+                    else if(ssrsCommonResource.getType().equals(("LinkedReport"))) {
+                        LinkedReports linkedReports = objectMapper.readValue(jsonArray.get(i).toString(), LinkedReports.class);
+                        catalogLinkedReportsMetadata(linkedReports);
                     }
-
+                    else if(ssrsCommonResource.getType().equals(("Folder"))) {
+                        Folder folder = objectMapper.readValue(jsonArray.get(i).toString(), Folder.class);
+                        catalogFolderMetadata(folder);
+                    }
                 }
             }
         }
