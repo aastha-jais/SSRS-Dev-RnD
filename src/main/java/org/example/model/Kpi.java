@@ -1,14 +1,13 @@
-package org.example.model;//package org.open_kos.collectors.ssrs.model;
+package org.example.model;
+
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Data;
 
-import java.util.List;
-
 @Data
 @JsonPropertyOrder
-public class SSRSCommonResource extends DataSources {
+public class Kpi {
 
     @JsonProperty("Id")
     private String id;
@@ -26,7 +25,7 @@ public class SSRSCommonResource extends DataSources {
     private String type;
 
     @JsonProperty("Hidden")
-    private Boolean hidden;
+    private boolean hidden;
 
     @JsonProperty("Size")
     private int size;
@@ -45,5 +44,24 @@ public class SSRSCommonResource extends DataSources {
 
     @JsonProperty("ParentFolderId")
     private String parentFolderId;
+
+    @JsonProperty("IsFavorite")
+    private Boolean isFavorite;
+
+    @JsonProperty("ContentType")
+    private String contentType;
+
+    @JsonProperty("Content")
+    private String content;
+
+    @JsonProperty("ValueFormat")
+    private String valueFormat;
+
+    @JsonProperty("Visualization")
+    private String visualization;
+
+    @JsonProperty("Currency")
+    private String currency;
+
 
 }

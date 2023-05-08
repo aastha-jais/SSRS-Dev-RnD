@@ -6,8 +6,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.model.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
-import javax.validation.constraints.NotNull;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -16,116 +24,122 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Base64;
 
+
 public class SSRSTest {
 
     private static final String SSRS_BASE_URI = "http://54.152.159.202/reports/api/v2.0/";
     private static final String USER = "Administrator";
     private static final String PASSWORD = "Q2iGsk?ypc2xU($U49Y@Sg2gdJi)ZiHU";
 
+    public static String ReportId = "";
+
     public static void main(String[] args) throws Exception {
-        catalogMetadata("Folders");
-    }
-
-    private static String getAPIUsingBasicAuthentication(String resourceType) throws Exception {
-        URI targetURI = new URI(SSRS_BASE_URI);
-        String authString = USER + ":" + PASSWORD;
-        String authStringEnc = new String(Base64.getEncoder().encode(authString.getBytes()));
-        HttpRequest httpRequest = HttpRequest.newBuilder()
-                .uri(URI.create(targetURI + resourceType))
-                .GET()
-                .header("Authorization", "Basic " + authStringEnc)
-                .build();
-        HttpClient httpClient = HttpClient.newHttpClient();
-        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-        return response.body();
+        catalogMetadata("Kpis");
+//        parseXmlResponse(responseForName);
     }
 
 
 
+    public static SSRSCommonResource[] jsonArray(String response) throws JsonProcessingException {
+        JSONObject jsnobject = new JSONObject(response);
+        JSONArray jsonArray = jsnobject.getJSONArray("value");
+        SSRSCommonResource ssrsCommonResource[] = new SSRSCommonResource[jsonArray.length()];
+        if (jsonArray != null) {
+            System.out.println("length: " + jsonArray.length());
+            for (int i = 0; i < jsonArray.length(); i++) {
+
+                ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+                ssrsCommonResource[i] = objectMapper.readValue(jsonArray.get(i).toString(), SSRSCommonResource.class);
+            }
+        }
+        return ssrsCommonResource;
+    }
 
 
-        public static void catalogMetadata( String resourceType) throws Exception {
-            String response=getAPIUsingBasicAuthentication(resourceType);
-            System.out.println(response);
-              JSONObject jsnobject = new JSONObject(response);
-              JSONArray jsonArray = jsnobject.getJSONArray("value");
-              if (jsonArray != null) {
-                  System.out.println("length: " + jsonArray.length());
-                  for (int i = 0; i < jsonArray.length(); i++) {
+    public static void catalogMetadata(String resourceType) throws Exception {
+        String response = BasicAuthentication.getAPIUsingBasicAuthentication(resourceType);
+        System.out.println(response);
+        JSONObject jsnobject = new JSONObject(response);
+        JSONArray jsonArray = jsnobject.getJSONArray("value");
+        if (jsonArray != null) {
+            System.out.println("length: " + jsonArray.length());
+            for (int i = 0; i <jsonArray.length(); i++) {
 
-                      ObjectMapper objectMapper = new ObjectMapper();
-                      objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-                      if(resourceType.equals("Folders")){
-                          Folder folder = objectMapper.readValue(jsonArray.get(i).toString(), Folder.class);
-                          catalogFolderMetadata(folder);
-                          if(folder.getType().equals("Folder")){
-                              String connectedResourceResponse=getConnectedResource(resourceType,"CatalogItems",folder.getId());
-                              ResponseForConnectedSources (connectedResourceResponse, "CatalogItems");
-                          }
-                          String responseForPolicies=getResourceSpecificPolicies(resourceType, folder.getId());;
-                          catalogPolicies(responseForPolicies);
-                      }
-                      else if(resourceType.equals("Reports")){
-                          Report report = objectMapper.readValue(jsonArray.get(i).toString(), Report.class);
-                          if(report.getType().equals("LinkedReport")){
-                              catalogLinkedReportsMetadata(report);
-                          }
-//                          else {
-//                              catalogReportMetadata(report);
-//                              if (report.getHasDataSources() == true) {
-//                                  String connectedResourceResponse = getConnectedResource(resourceType, "DataSources", report.getId());
-//                                  ResponseForConnectedSources(connectedResourceResponse, "DataSources");
-//                              }
-//                              if (report.getHasSharedDataSets() == true) {
-//                                  String connectedResourceResponse = getConnectedResource(resourceType, "SharedDataSets", report.getId());
-//                                  ResponseForConnectedSources(connectedResourceResponse, "SharedDataSets");
-//                              }
-//                          }
-                          String responseForPolicies=getResourceSpecificPolicies(resourceType, report.getId());;
+                ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+                if (resourceType.equals("Folders")) {
+                    Folder folder = objectMapper.readValue(jsonArray.get(i).toString(), Folder.class);
+                    System.out.println(("-----------Folder-------"));
+                    CatalogFolder.catalogFolderMetadata(folder);
+                    if (folder.getType().equals("Folder")) {
+                        String connectedResourceResponse = getConnectedResource(resourceType, "CatalogItems", folder.getId());
+                        ConnectedSources.ResponseForConnectedSources(connectedResourceResponse, "CatalogItems");
+                    }
+                    System.out.println(("-----------Policies-------"));
+                    String responseForPolicies = getResourceSpecificPolicies(resourceType, folder.getId());
+                    CatalogPolicies.catalogPolicies(responseForPolicies);
+                } else if (resourceType.equals("Reports")) {
+                    Report report = objectMapper.readValue(jsonArray.get(i).toString(), Report.class);
+                    System.out.println(("-----------Reports-------"));
+                    CatalogReport.catalogReportMetadata(report);
+                    ReportId = report.getId();
+                    if (report.getHasDataSources()) {
+                        String connectedResourceResponse = getConnectedResource(resourceType, "DataSources", report.getId());
+                        ConnectedSources.ResponseForConnectedSources(connectedResourceResponse, "DataSources");
+                    }
+                    if (report.getHasSharedDataSets()) {
+                        String connectedResourceResponse = getConnectedResource(resourceType, "SharedDataSets", report.getId());
+                        ConnectedSources.ResponseForConnectedSources(connectedResourceResponse, "SharedDataSets");
+                    }
+//                          System.out.println(("-------------------------Policies-------------------------"));
+//                              String responseForPolicies=getResourceSpecificPolicies(resourceType, report.getId());;
 //                        catalogPolicies(responseForPolicies);
+                } else if (resourceType.equals("DataSources")) {
+                    DataSources dataSources = objectMapper.readValue(jsonArray.get(i).toString(), DataSources.class);
+                    CatalogDataSource.catalogDatasourceMetadata(dataSources);
+                    System.out.println(("-------------------------Policies-------------------------"));
+                    String responseForPolicies = getResourceSpecificPolicies(resourceType, dataSources.getId());
+                    CatalogPolicies.catalogPolicies(responseForPolicies);
+                } else if (resourceType.equals("LinkedReports")) {
+                    LinkedReports linkedReports = objectMapper.readValue(jsonArray.get(i).toString(), LinkedReports.class);
+                    CatalogLinkedReport.catalogLinkedReportsMetadata(linkedReports);
+                    System.out.println(("-------------------------Policies-------------------------"));
+                    String responseForPolicies = getResourceSpecificPolicies(resourceType, linkedReports.getId());
+                    CatalogPolicies.catalogPolicies(responseForPolicies);
+                } else if (resourceType.equals("Kpis")) {
+                    Kpis Kpis = objectMapper.readValue(jsonArray.get(i).toString(), Kpis.class);
+                    CatalogKpis.catalogKpisMetadata(Kpis);
+                    if(jsnobject.getJSONArray("value").getJSONObject(i).optJSONObject("Data" ).optJSONObject("Goal")!=null){
+                        Object ja = jsnobject.getJSONArray("value").getJSONObject(i).optJSONObject("Data" ).optJSONObject("Goal").get("Id");
+                        Object obj= jsnobject.getJSONArray("value").getJSONObject(i).optJSONObject("Data" ).optJSONObject("Goal").get("Path");
+                        System.out.println("Dataset Id :"+ja);
+                        System.out.println("Dataset Path :"+obj);
 
-                      }
-                      else  if (resourceType.equals("DataSources")){
-                          DataSources dataSources = objectMapper.readValue(jsonArray.get(i).toString(), DataSources.class);
-                          catalogDatasourceMetadata(dataSources);
-                          String responseForPolicies=getResourceSpecificPolicies(resourceType, dataSources.getId());;
-                          catalogPolicies(responseForPolicies);
-                      }
-                      else if(resourceType.equals("LinkedReports")){
-                          LinkedReports linkedReports = objectMapper.readValue(jsonArray.get(i).toString(), LinkedReports.class);
-                          catalogLinkedReportsMetadata(linkedReports);
-                          String responseForPolicies= getResourceSpecificPolicies(resourceType, linkedReports.getId());
-                          catalogPolicies(responseForPolicies);
-                      }
-                      else if (resourceType.equals("Kpis")) {
-                          Kpis kpis = objectMapper.readValue(jsonArray.get(i).toString(), Kpis.class);
-                          catalogKpisMetadata(kpis);
-                          String responseForPolicies = getResourceSpecificPolicies(resourceType, kpis.getId());
-                          catalogPolicies(responseForPolicies);
-                      }
-                      else if (resourceType.equals("DataSets")) {
-                          DataSets datasets = objectMapper.readValue(jsonArray.get(i).toString(), DataSets.class);
-                          catalogDataSetsMetadata(datasets);
-                          String responseForPolicies = getResourceSpecificPolicies(resourceType, datasets.getId());
-                          catalogPolicies(responseForPolicies);
-                      }
-                      if(resourceType.equals("CatalogItems")) {
-                          SSRSCommonResource ssrsCommonResource= objectMapper.readValue(jsonArray.get(i).toString(), SSRSCommonResource.class);
-                          resourceCatalog(ssrsCommonResource);
-                          String responseForPolicies=getResourceSpecificPolicies(resourceType, ssrsCommonResource.getId());
-                          catalogPolicies(responseForPolicies);
-                      }
-                  }
-              }
-
-          }
-
-    private static void resourceCatalog(SSRSCommonResource ssrsCommonResource) {
-        if(ssrsCommonResource.getType().equals("DataSet")){
-
+                    }
+//                    catalogData(i,response);
+                    System.out.println(("-------------------------Policies-------------------------"));
+//                    String responseForPolicies = getResourceSpecificPolicies(resourceType, kpiss.getId());
+//                    catalogPolicies(responseForPolicies);
+                } else if (resourceType.equals("DataSets")) {
+                    DataSets datasets = objectMapper.readValue(jsonArray.get(i).toString(), DataSets.class);
+                    CatalogDataSets.catalogDataSetsMetadata(datasets);
+                    System.out.println(("-------------------------Policies-------------------------"));
+                    String responseForPolicies = getResourceSpecificPolicies(resourceType, datasets.getId());
+                    CatalogPolicies.catalogPolicies(responseForPolicies);
+                }
+//                      if(resourceType.equals("CatalogItems")) {
+//                          SSRSCommonResource ssrsCommonResource= objectMapper.readValue(jsonArray.get(i).toString(), SSRSCommonResource.class);
+//                          resourceCatalog(ssrsCommonResource);
+//                          System.out.println(("-------------------------Policies-------------------------"));
+//                          String responseForPolicies=getResourceSpecificPolicies(resourceType, ssrsCommonResource.getId());
+//                          catalogPolicies(responseForPolicies);
+//                      }
+            }
         }
 
     }
+
 
     private static String getResourceSpecificPolicies(String resourceType, String id) throws Exception {
         URI targetURI = new URI(SSRS_BASE_URI);
@@ -140,12 +154,20 @@ public class SSRSTest {
         HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
         return response.body();
     }
-    private static String getConnectedResource(String resourceType,String source, String id) throws Exception {
+
+    private static String getSharedDataSourcesAndDataSets(String resourceType, String path, String name) throws Exception {
         URI targetURI = new URI(SSRS_BASE_URI);
         String authString = USER + ":" + PASSWORD;
         String authStringEnc = new String(Base64.getEncoder().encode(authString.getBytes()));
+        String uri = "";
+        if (path != null) {
+            uri = targetURI + resourceType + "?$filter=Path%20eq%20'" + path + "'%20&%20$Name%20eq%20'" + name + "'";
+        } else {
+            uri = targetURI + resourceType + "?$filter=Name%20eq%20'" + name + "'";
+        }
+        System.out.println(uri);
         HttpRequest httpRequest = HttpRequest.newBuilder()
-                .uri(URI.create(targetURI + resourceType + "(" + id + ")" +"/"+ source))
+                .uri(URI.create(uri))
                 .GET()
                 .header("Authorization", "Basic " + authStringEnc)
                 .build();
@@ -154,188 +176,47 @@ public class SSRSTest {
         return response.body();
     }
 
-    public static void ResponseForConnectedSources (String response, String source) throws Exception {
-        System.out.println(response);
-        JSONObject jsnobject = new JSONObject(response);
-        JSONArray jsonArray = jsnobject.getJSONArray("value");
-        if (jsonArray != null) {
-            System.out.println("length: " + jsonArray.length());
-            for (int i = 0; i < jsonArray.length(); i++) {
-                ObjectMapper objectMapper = new ObjectMapper();
-                objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-                if(source.equals("DataSources")) {
-                    System.out.println("--------------inside------------------");
-                    DataSources dataSources = objectMapper.readValue(jsonArray.get(i).toString(), DataSources.class);
-                    catalogDatasourceMetadata(dataSources);
-                }
-                else if(source.equals("SharedDataSets")) {
-                    DataSets dataSets = objectMapper.readValue(jsonArray.get(i).toString(), DataSets.class);
-                    catalogDataSetsMetadata(dataSets);
-                }
-                else if(source.equals("CatalogItems")){
-                    SSRSCommonResource ssrsCommonResource = objectMapper.readValue(jsonArray.get(i).toString(), SSRSCommonResource.class);
-                    if(ssrsCommonResource.getType().equals(("Report"))) {
-                        Report report = objectMapper.readValue(jsonArray.get(i).toString(), Report.class);
-                        catalogReportMetadata(report);
-                        if (report.getHasDataSources() == true) {
-                            String connectedResourceResponse = getConnectedResource("Reports", "DataSources", report.getId());
-                            ResponseForConnectedSources(connectedResourceResponse, "DataSources");
-                        }
-                        if (report.getHasSharedDataSets() == true) {
-                            String connectedResourceResponse = getConnectedResource("Reports", "SharedDataSets", report.getId());
-                            ResponseForConnectedSources(connectedResourceResponse, "SharedDataSets");
-                        }
-                    }
-                    else if(ssrsCommonResource.getType().equals(("LinkedReport"))) {
-                        LinkedReports linkedReports = objectMapper.readValue(jsonArray.get(i).toString(), LinkedReports.class);
-                        catalogLinkedReportsMetadata(linkedReports);
-                    }
-                    else if(ssrsCommonResource.getType().equals(("Folder"))) {
-                        Folder folder = objectMapper.readValue(jsonArray.get(i).toString(), Folder.class);
-                        catalogFolderMetadata(folder);
-                    }
-                }
-            }
-        }
+    public static String getIntegratedDataSourcesAndDataSets(String resourceType, String id) throws Exception {
+        URI targetURI = new URI(SSRS_BASE_URI);
+        String authString = USER + ":" + PASSWORD;
+        String authStringEnc = new String(Base64.getEncoder().encode(authString.getBytes()));
+        String uri = targetURI + resourceType + "(" + id + ")" + "/Content/$value";
+        System.out.println(uri);
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(uri))
+                .GET()
+                .header("Authorization", "Basic " + authStringEnc)
+                .build();
+        HttpClient httpClient = HttpClient.newHttpClient();
+        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        return response.body();
     }
-    public static void catalogPolicies(String response) throws URISyntaxException, IOException, InterruptedException {
 
-              System.out.println("Response: " + response);
-
-              JSONObject jsnobject = new JSONObject(response);
-              JSONArray jsonArray = jsnobject.getJSONArray("Policies");
-        System.out.println("----Policies----");
-              if (jsonArray != null) {
-                  System.out.println("length: " + jsonArray.length());
-                  for (int i = 0; i < jsonArray.length(); i++) {
-
-                      ObjectMapper objectMapper = new ObjectMapper();
-                      objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-                      Policies obj = objectMapper.readValue(jsonArray.get(i).toString(), Policies.class);
-                      System.out.println("Get Group user Name :" + obj.getGroupUserName());
-                      catalogRoles(i,response);
-                  }
-
-              }
+    private static String getConnectedResource(String resourceType, String source, String id) throws Exception {
+        URI targetURI = new URI(SSRS_BASE_URI);
+        String authString = USER + ":" + PASSWORD;
+        String authStringEnc = new String(Base64.getEncoder().encode(authString.getBytes()));
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(targetURI + resourceType + "(" + id + ")" + "/" + source))
+                .GET()
+                .header("Authorization", "Basic " + authStringEnc)
+                .build();
+        HttpClient httpClient = HttpClient.newHttpClient();
+        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        return response.body();
     }
 
 
-    private static void catalogRoles(int index,String response) throws JsonProcessingException {
+//}
 
-        JSONObject jsnobject = new JSONObject(response);
-        JSONArray ja = jsnobject.getJSONArray("Policies").getJSONObject(index).getJSONArray("Roles");
-        if (ja != null) {
-            System.out.println("length: " + ja.length());
-            for (int j = 0; j < ja.length(); j++) {
 
-                ObjectMapper objectMapper1 = new ObjectMapper();
-                objectMapper1.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-                Roles obj1 = objectMapper1.readValue(ja.get(j).toString(), Roles.class);
-                System.out.println("name : " + obj1.getName());
-                System.out.println("Description : " + obj1.getDescription());
 
-            }
-        }
-    }
-    public static void catalogFolderMetadata(Folder folder){
 
-        System.out.println("Get Name : " + folder.getName());
-        System.out.println("Get Id : " + folder.getId());
-        System.out.println("Get Type : " + folder.getType());
-        System.out.println("Get ModifiedDate : " + folder.getModifiedDate());
-        System.out.println("Get CreatedBy : " + folder.getCreatedBy());
-        System.out.println("Get Description : " + folder.getDescription());
-        System.out.println("Get ModifiedBy : " + folder.getModifiedBy());
-        System.out.println("Get Size : " + folder.getSize());
-        System.out.println("Get CreatedDate: " + folder.getCreatedDate());
-        System.out.println("Get ParentFolderId : " + folder.getParentFolderId());
-        System.out.println("Get IsFavorite : " + folder.getIsFavorite());
 
-    }
-    private static void catalogReportMetadata(Report report) {
-        System.out.println("Get Name : " + report.getName());
-        System.out.println("Get Id : " + report.getId());
-        System.out.println("Get Type : " + report.getType());
-        System.out.println("Get ModifiedDate : " + report.getModifiedDate());
-        System.out.println("Get CreatedBy : " + report.getCreatedBy());
-        System.out.println("Get Description : " + report.getDescription());
-        System.out.println("Get ModifiedBy : " + report.getModifiedBy());
-        System.out.println("Get Size : " + report.getSize());
-        System.out.println("Get CreatedDate: " + report.getCreatedDate());
-        System.out.println("Get ParentFolderId : " + report.getParentFolderId());
-        System.out.println("Get Path : " + report.getPath());
-        System.out.println("Get Hidden : " + report.getHidden());
-        System.out.println("Get HasDataSources : " + report.getHasDataSources());
-        System.out.println("Get HasSharedDataSets : " + report.getHasSharedDataSets());
 
-    }
-    private static void catalogDatasourceMetadata(DataSources dataSource) {
-        System.out.println("Get Name : " + dataSource.getName());
-        System.out.println("Get Id : " + dataSource.getId());
-        System.out.println("Get Type : " + dataSource.getType());
-        System.out.println("Get ModifiedDate : " + dataSource.getModifiedDate());
-        System.out.println("Get CreatedBy : " + dataSource.getCreatedBy());
-        System.out.println("Get Description : " + dataSource.getDescription());
-        System.out.println("Get ModifiedBy : " + dataSource.getModifiedBy());
-        System.out.println("Get Size : " + dataSource.getSize());
-        System.out.println("Get CreatedDate: " + dataSource.getCreatedDate());
-        System.out.println("Get ParentFolderId : " + dataSource.getParentFolderId());
-        System.out.println("Get Path : " + dataSource.getPath());
-        System.out.println("Get Hidden : " + dataSource.getHidden());
-        System.out.println("Get CredentialInServer : " + dataSource.getCredentialInServer());
-        System.out.println("Get CredentialRetrieval : " + dataSource.getCredentialRetrieval());
-        System.out.println("Get CredentialsByUser : " + dataSource.getCredentialsByUser());
-        System.out.println("Get DataSourceTypeString : " + dataSource.getDataSourceTypeString());
-        System.out.println("Get IsConnectionStringOverridden : " + dataSource.getIsConnectionStringOverridden());
-        System.out.println("Get DataSourceSubType : " + dataSource.getDataSourceSubType());
-        System.out.println("Get IsOriginalConnectionStringExpressionBased : " + dataSource.getIsOriginalConnectionStringExpressionBased());
-        System.out.println("Get ConnectionString : " + dataSource.getConnectionString());
 
-    }
-    private static void catalogLinkedReportsMetadata(LinkedReports linkedReports) {
-        System.out.println("Get Name : " + linkedReports.getName());
-        System.out.println("Get Id : " + linkedReports.getId());
-        System.out.println("Get Type : " + linkedReports.getType());
-        System.out.println("Get ModifiedDate : " + linkedReports.getModifiedDate());
-        System.out.println("Get CreatedBy : " + linkedReports.getCreatedBy());
-        System.out.println("Get Description : " + linkedReports.getDescription());
-        System.out.println("Get ModifiedBy : " + linkedReports.getModifiedBy());
-        System.out.println("Get Size : " + linkedReports.getSize());
-        System.out.println("Get CreatedDate: " + linkedReports.getCreatedDate());
-        System.out.println("Get ParentFolderId : " + linkedReports.getParentFolderId());
-        System.out.println("Get IsFavorite : " + linkedReports.getIsFavorite());
-        System.out.println("Get HasParameters : " + linkedReports.getHasParameters());
-        System.out.println("Get Path : " + linkedReports.getPath());
-        System.out.println("Get Link : " + linkedReports.getLink());
-    }
 
-    private static void catalogKpisMetadata(Kpis kpis) {
-        System.out.println("Get Name : " + kpis.getName());
-        System.out.println("Get Id : " + kpis.getId());
-        System.out.println("Get Type : " + kpis.getType());
-        System.out.println("Get ModifiedDate : " + kpis.getModifiedDate());
-        System.out.println("Get CreatedBy : " + kpis.getCreatedBy());
-        System.out.println("Get Description : " + kpis.getDescription());
-        System.out.println("Get ModifiedBy : " + kpis.getModifiedBy());
-        System.out.println("Get Size : " + kpis.getSize());
-        System.out.println("Get CreatedDate: " + kpis.getCreatedDate());
-        System.out.println("Get ParentFolderId : " + kpis.getParentFolderId());
-        System.out.println("Get IsFavorite : " + kpis.getIsFavorite());
-        System.out.println("Get ValueFormat : " + kpis.getValueFormat());
-        System.out.println("Get Currency : " + kpis.getCurrency());
-        System.out.println("Get Visualization : " + kpis.getVisualization());
-        System.out.println("Get Path : " + kpis.getPath());
-    }
-    private static void catalogDataSetsMetadata(DataSets dataSets) {
-        System.out.println("Get Name : " + dataSets.getName());
-        System.out.println("Get Id : " + dataSets.getId());
-        System.out.println("Get Type : " + dataSets.getType());
-        System.out.println("Get ModifiedDate : " + dataSets.getModifiedDate());
-        System.out.println("Get CreatedBy : " + dataSets.getCreatedBy());
-        System.out.println("Get Description : " + dataSets.getDescription());
-        System.out.println("Get ModifiedBy : " + dataSets.getModifiedBy());
-        System.out.println("Get Size : " + dataSets.getSize());
-        System.out.println("Get CreatedDate: " + dataSets.getCreatedDate());
-        System.out.println("Get ParentFolderId : " + dataSets.getParentFolderId());
-    }
+
 }
+
+

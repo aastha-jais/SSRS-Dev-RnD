@@ -8,7 +8,7 @@ import java.util.List;
 
 @Data
 @JsonPropertyOrder
-public class DataSources {
+public class DataSources{
 
     @JsonProperty("Id")
     private String id;
